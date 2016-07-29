@@ -1,0 +1,84 @@
+#!/bin/bash
+if [ ! -z $2 ];then
+    echo "bad parameter"
+    exit 84
+    fi
+fold="$1";
+IFS=";"
+ if [ ! -f "$fold" ];then
+     echo "bad parameter";
+	exit 84
+ else
+    while read ligne
+     do
+	 array=($ligne)
+     if [[ ${array[0]} == "CC" ]];then
+         CC=${array[1]}
+     elif [[ ${array[0]} == "CFLAGS" ]];then
+         CFL=${array[1]}
+     elif [[ ${array[0]} == "PROJECT_DIR" ]];then
+         proj_dir=${array[1]}
+     elif [[ ${array[0]} == "EXEC" ]];then
+         NAME=${array[1]}
+     elif [[ ${array[0]} == "HEADERS_DIR" ]];then
+         INC=${array[1]}
+     elif [[ ${array[0]} == "LDFLAGS" ]];then
+         LD_FLAGS=${array[1]}
+     elif [[ ${array[0]} == "LIBS_DIR" ]];then
+         LIB_DIR=${array[1]}
+     elif [[ ${array[0]} == "BCK_DIR" ]];then
+	BCK=${array[1]}
+     elif [[ ${array[0]} == "SOURCES_DIR" ]];then
+         SRC=${array[1]}
+     elif [[ ${array[0]} == "ZIP" ]];then
+	ZIP=${array[1]}
+     elif [[ ${array[0]} == "UNZIP" ]];then
+	UNZIP=${array[1]}
+     elif [[ ${array[0]} == "ZIPFLAGS" ]];then
+	 ZIP_FLG=${array[1]}
+     elif [[ ${array[0]} == "UNZIPFLAGS" ]];then
+	 UNZIP_FLG=${array[1]}
+      elif [[ ${array[0]} == *.c ]];then
+	 new_array[counter]=${array[0]}
+	 let counter+=1
+     fi
+     done < $fold
+     if [ -z $proj_dir ];then
+	 proj_dir="."
+     fi
+     echo 0 > $proj_dir/.vers
+     echo 0 > $proj_dir/.tmp_vers
+     if [ ! -d "$proj_dir/$BCK" ]; then
+	 mkdir $proj_dir/$BCK
+	fi
+for ((i=0 ; counter - $i ; i++))
+do
+    if [ $i == 0 ];then
+	echo -e "SRC=\t$SRC/${new_array[$i]}\t\t\\" > $proj_dir/Makefile
+	else
+	    echo -e "\t$SRC/${new_array[$i]}\t\t\\" >> $proj_dir/Makefile
+	    fi
+done
+echo -e "\nINC=\t-I./$INC/\nCFLAGS= $CFL \$(INC)\nLDFLAGS=\t$LD_FLAGS" >> $proj_dir/Makefile
+echo -e "OBJ=\t\$(SRC:.c=.o)" >> $proj_dir/Makefile
+if [[ -f "/$LIB_DIR/*.a" ]];then
+    echo -e "LIB=\t/proj_dir/$LIB_DIR/*.a"
+    fi
+echo -e "CC=\t$CC\n" >> $proj_dir/Makefile
+echo -e "NAME=\t$NAME\n" >> $proj_dir/Makefile
+echo -e "all:\t\$(NAME)\n" >> $proj_dir/Makefile
+if [[ ! -f "/$LIB_DIR/*.a" ]];then
+    echo -e "\$(NAME):\t\$(OBJ)\n\t\t\$(CC) -o \$(NAME) \$(OBJ)\n" >> $proj_dir/Makefile
+else
+    echo -e "\$(NAME):\t\$(OBJ)\n\t\t\$(CC) -o \$(NAME) \$(OBJ) \$(LIB)\n" >> $proj_dir/Makefile
+   fi
+echo -e "archive:\n\t@mv -f .vers .tmp_vers" >> $proj_dir/Makefile
+echo -e "\t@awk '(NR==1){$"$"$""i++;}1' .tmp_vers > .vers" >> $proj_dir/Makefile
+echo -e "\t@$ZIP $ZIP_FLG backup.tgz \$(SRC)\n\t@mv backup.tgz $BCK" >> $proj_dir/Makefile
+echo -e "\t@echo \"backup.tgz file generated.\"" >> $proj_dir/Makefile
+echo -e "revert:\n\t@$UNZIP $UNZIP_FLG $BCK/backup.tgz \$(SRC)\t" >> $proj_dir/Makefile
+echo -e "num:\n\t@echo "Version: "\n\t@cat .vers" >> $proj_dir/Makefile
+echo -e "delete:\n\trm $BCK/*.tgz\n" >> $proj_dir/Makefile
+echo -e "clean:" >> $proj_dir/Makefile
+echo -e "\trm -rf \$(OBJ)\n\nfclean: clean\n\trm -rf \$(NAME)\n\nre:\tfclean all" >> $proj_dir/Makefile
+fi
